@@ -1,0 +1,43 @@
+name: Update Surge profile
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-surge-profile
+  cancel-in-progress: true
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install converter dependency
+        run: pip install --requirement requirements.txt
+
+      - name: Download and convert the current upstream profile
+        run: python convert.py
+
+      - name: Commit a changed profile
+        run: |
+          if git diff --quiet -- surge.conf; then
+            echo "Upstream profile has not changed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add surge.conf
+          git commit -m "Update Surge profile"
+          git push
